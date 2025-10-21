@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invitación a la Conferencia</title>
+    <!-- Importamos Tailwind CSS para un diseño moderno y responsivo --><script src="https://cdn.tailwindcss.com"></script>
+    <!-- Importamos la librería html2canvas para generar la imagen --><script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Importamos una fuente de Google Fonts para mejorar la estética --><link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://css.gg/css?name=software-download" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Usamos Inter como fuente base y Merriweather para el nombre del invitado para que coincida con la invitación */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        #guestNameDisplay {
+            font-family: 'Merriweather', serif;
+        }
+        /* Definimos un aspect ratio para el contenedor de la invitación para que se ajuste a la imagen */
+        .invitation-container {
+            width: 100%;
+            /* Reducimos el ancho máximo para hacer la invitación más pequeña */
+            max-width: 900px; 
+            aspect-ratio: 3 / 2; /* Proporción de la imagen (1200 / 800) */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center min-h-screen p-4 sm:p-6">
+
+    <div class="w-full max-w-3xl text-center mb-8">
+        <h1 class="text-3xl sm:text-4xl font-bold text-blue-300">Generador de Invitación Personalizada</h1>
+        <p class="text-gray-400 mt-2">Escribe el nombre de tu invitado y luego descarga la imagen.</p>
+    </div>
+
+    <!-- Contenedor principal de la invitación que se va a descargar --><div id="invitationCard" class="invitation-container relative bg-contain bg-no-repeat bg-center rounded-2xl" style="background-image: url('Conferencia sud final invitacion.png');">
+        <!-- Este span mostrará el nombre del invitado. Se posiciona de forma absoluta sobre la imagen --><!-- NOTA: Se ha cambiado el color del texto a blanco, se ha añadido 'italic' para cursiva y se ha reducido el tamaño de fuente --><span id="guestNameDisplay" class="absolute text-lg sm:text-xl md:text-2xl font-bold text-white italic" style="top: 42.0%; left: 57.5%; width: 38%;"></span>
+    </div>
+
+    <!-- Controles: Campo de texto y botón de descarga --><div class="mt-8 w-full max-w-md">
+        <label for="guestNameInput" class="sr-only">Nombre del Invitado</label>
+        <input 
+            type="text" 
+            id="guestNameInput" 
+            placeholder="Escribe aquí el nombre del invitado"
+            class="w-full px-5 py-4 bg-gray-800 border-2 border-gray-700 rounded-lg text-white text-center text-lg focus:ring-4 focus:ring-blue-500/50 focus:border-blue-500 focus:outline-none transition-all duration-300"
+        >
+        <!-- Botón de descarga y barra de progreso --><div class="mt-6 text-center">
+            <button id="downloadBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 inline-flex items-center gap-2">
+                <i class="gg-software-download"></i>
+                Descargar Invitación
+            </button>
+            <div id="progressContainer" class="w-full bg-gray-700 rounded-full h-2.5 mt-4 hidden">
+                <div id="progressBar" class="bg-blue-500 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+            <p id="progressText" class="text-gray-400 mt-2 text-sm hidden">Generando imagen...</p>
+        </div>
+    </div>
+
+    <!-- Enlazamos el archivo JavaScript externo --><script src="script.js" defer></script>
+
+</body>
+</html>
