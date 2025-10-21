@@ -14,64 +14,73 @@ guestNameInput.addEventListener('input', function() {
 
 // Evento que se dispara al hacer clic en el botón de descarga
 downloadBtn.addEventListener('click', function() {
-    // Deshabilitamos el botón y mostramos el progreso
+    // Deshabilitamos el botón para evitar que se haga clic varias veces
     downloadBtn.disabled = true;
     downloadBtn.innerHTML = 'Generando...';
     downloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
     
+    // Mostramos la barra y el texto de progreso
     progressContainer.classList.remove('hidden');
     progressText.classList.remove('hidden');
     progressBar.style.width = '0%';
 
-    // Para obtener la mejor calidad, vamos a redimensionar temporalmente la tarjeta
-    // al tamaño original de la imagen de fondo antes de capturarla.
+    // --- Lógica para captura de alta calidad ---
+    // 1. Cargamos la imagen de fondo para obtener sus dimensiones originales
     const img = new Image();
     const style = window.getComputedStyle(invitationCard);
-    const imageUrl = style.backgroundImage.slice(5, -2); // Extrae la URL de 'url("...")'
+    const bgImageSrc = style.backgroundImage.slice(4, -1).replace(/"/g, "");
+    img.src = bgImageSrc;
 
-    img.src = imageUrl;
-
-    const restoreOriginalStyles = () => {
-        // Restaura los estilos en línea para que la tarjeta vuelva a su tamaño normal en la página
-        invitationCard.style.width = '';
-        invitationCard.style.height = '';
-        invitationCard.style.maxWidth = '';
-        invitationCard.style.aspectRatio = '';
-        guestNameDisplay.style.fontSize = '';
-    };
-
-    img.onload = () => {
-        const originalWidth = img.naturalWidth;
-        const originalHeight = img.naturalHeight;
-
-        // Calcula el ratio de escalado para el texto, para que crezca proporcionalmente
+    img.onload = function() {
+        const originalWidth = this.naturalWidth;
+        const originalHeight = this.naturalHeight;
+        
+        // Obtenemos el tamaño actual del contenedor en pantalla
         const currentCardWidth = invitationCard.offsetWidth;
-        const scaleRatio = originalWidth / currentCardWidth;
+        const currentCardHeight = invitationCard.offsetHeight;
 
-        // Obtiene el tamaño de fuente actual y lo escala
+        // Calculamos un tamaño intermedio (50% menos de crecimiento)
+        const targetWidth = (currentCardWidth + originalWidth) / 2;
+        const targetHeight = (currentCardHeight + originalHeight) / 2;
+
+        // Calculamos el factor de escala necesario para el texto
+        const scaleFactor = targetWidth / currentCardWidth;
+        // Obtenemos el tamaño de fuente actual del nombre
         const currentFontSize = parseFloat(window.getComputedStyle(guestNameDisplay).fontSize);
-        const scaledFontSize = currentFontSize * scaleRatio;
+        // Calculamos el nuevo tamaño de fuente para la captura de alta calidad
+        const newFontSize = currentFontSize * scaleFactor;
 
-        // Aplica los nuevos tamaños para la captura de alta resolución
-        invitationCard.style.width = `${originalWidth}px`;
-        invitationCard.style.height = `${originalHeight}px`;
+        // 2. Guardamos los estilos originales para restaurarlos después
+        const originalCardStyles = {
+            width: invitationCard.style.width,
+            height: invitationCard.style.height,
+            maxWidth: invitationCard.style.maxWidth,
+            aspectRatio: invitationCard.style.aspectRatio,
+        };
+        const originalNameStyle = guestNameDisplay.style.fontSize;
+
+        // 3. Redimensionamos temporalmente el contenedor y el texto a las dimensiones objetivo
+        invitationCard.style.width = `${targetWidth}px`;
+        invitationCard.style.height = `${targetHeight}px`;
         invitationCard.style.maxWidth = 'none';
         invitationCard.style.aspectRatio = 'auto';
-        guestNameDisplay.style.fontSize = `${scaledFontSize}px`;
+        guestNameDisplay.style.fontSize = `${newFontSize}px`;
         
-        // Damos un pequeño respiro al navegador para que renderice los nuevos estilos antes de capturar
+        // Damos un pequeño respiro al navegador para que renderice los cambios de tamaño
         setTimeout(() => {
+            // 4. Usamos html2canvas para capturar el div redimensionado
             html2canvas(invitationCard, {
                 useCORS: true,
                 allowTaint: true,
-                width: originalWidth,
-                height: originalHeight,
-                // No necesitamos 'scale' porque ya hemos redimensionado el elemento a su tamaño real
+                // Especificamos las dimensiones para asegurar la calidad
+                width: targetWidth,
+                height: targetHeight,
                 onprogress: function(progress) {
                     const percent = Math.round((progress.loaded / progress.total) * 100);
                     progressBar.style.width = percent + '%';
                 }
             }).then(canvas => {
+                // 5. Creamos el enlace de descarga
                 const link = document.createElement('a');
                 const guestName = guestNameInput.value.trim() || 'invitado';
                 const fileName = `invitacion_${guestName.replace(/\s+/g, '_')}.png`;
@@ -79,22 +88,26 @@ downloadBtn.addEventListener('click', function() {
                 link.download = fileName;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
-                
-                restoreOriginalStyles();
+
+                // 6. Restauramos los estilos originales del contenedor y del texto
+                Object.assign(invitationCard.style, originalCardStyles);
+                guestNameDisplay.style.fontSize = originalNameStyle;
                 resetDownloadButton();
-    
+
             }).catch(err => {
                 console.error('Oops, algo salió mal!', err);
                 progressText.textContent = 'Hubo un error al generar la imagen.';
-                restoreOriginalStyles();
+                // Aseguramos restaurar los estilos también en caso de error
+                Object.assign(invitationCard.style, originalCardStyles);
+                guestNameDisplay.style.fontSize = originalNameStyle;
                 setTimeout(resetDownloadButton, 2000);
             });
-        }, 100); // 100ms de retraso son suficientes
+        }, 100); // Pequeña demora para el re-renderizado
     };
 
-    img.onerror = () => {
-        console.error('Error: No se pudo cargar la imagen de fondo para determinar su tamaño.');
-        progressText.textContent = 'Error al cargar la imagen de fondo.';
+    img.onerror = function() {
+        console.error("Error al cargar la imagen de fondo para la captura de alta calidad.");
+        progressText.textContent = 'Error al cargar imagen de fondo.';
         setTimeout(resetDownloadButton, 2000);
     };
 });
