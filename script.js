@@ -24,92 +24,106 @@ downloadBtn.addEventListener('click', function() {
     progressText.classList.remove('hidden');
     progressBar.style.width = '0%';
 
-    // --- Lógica para captura de alta calidad ---
-    // 1. Cargamos la imagen de fondo para obtener sus dimensiones originales
-    const img = new Image();
-    const style = window.getComputedStyle(invitationCard);
-    const bgImageSrc = style.backgroundImage.slice(4, -1).replace(/"/g, "");
-    img.src = bgImageSrc;
+    // --- Lógica de Captura Diferenciada para Web y Móvil ---
+    const isMobile = window.innerWidth < 768; // Detectamos si la pantalla es de tamaño móvil
 
-    img.onload = function() {
-        const originalWidth = this.naturalWidth;
-        const originalHeight = this.naturalHeight;
-        
-        // Obtenemos el tamaño actual del contenedor en pantalla
-        const currentCardWidth = invitationCard.offsetWidth;
-        const currentCardHeight = invitationCard.offsetHeight;
+    if (isMobile) {
+        // --- LÓGICA OPTIMIZADA PARA MÓVILES ---
+        // Se genera en JPEG para reducir drásticamente el peso del archivo.
+        progressText.textContent = 'Optimizando para móvil...';
+        progressBar.style.width = '20%';
 
-        // Calculamos un tamaño intermedio (50% menos de crecimiento)
-        const targetWidth = (currentCardWidth + originalWidth) / 2;
-        const targetHeight = (currentCardHeight + originalHeight) / 2;
+        html2canvas(invitationCard, {
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff', // El formato JPEG necesita un color de fondo, el blanco es neutro.
+            scale: 2.0 // Escala optimizada para móviles.
+        }).then(canvas => {
+            progressBar.style.width = '100%';
+            const link = document.createElement('a');
+            const guestName = guestNameInput.value.trim() || 'invitado';
+            // Cambiamos el nombre del archivo a .jpeg
+            const fileName = `invitacion_${guestName.replace(/\s+/g, '_')}.jpeg`;
+            
+            link.download = fileName;
+            // Convertimos el canvas a formato JPEG con un 92% de calidad para un balance perfecto.
+            link.href = canvas.toDataURL('image/jpeg', 0.92);
+            link.click();
+            resetDownloadButton();
 
-        // Calculamos el factor de escala necesario para el texto
-        const scaleFactor = targetWidth / currentCardWidth;
-        // Obtenemos el tamaño de fuente actual del nombre
-        const currentFontSize = parseFloat(window.getComputedStyle(guestNameDisplay).fontSize);
-        // Calculamos el nuevo tamaño de fuente para la captura de alta calidad
-        const newFontSize = currentFontSize * scaleFactor;
+        }).catch(err => {
+            console.error('Error en la captura móvil!', err);
+            progressText.textContent = 'Hubo un error al generar la imagen.';
+            setTimeout(resetDownloadButton, 2000);
+        });
 
-        // 2. Guardamos los estilos originales para restaurarlos después
-        const originalCardStyles = {
-            width: invitationCard.style.width,
-            height: invitationCard.style.height,
-            maxWidth: invitationCard.style.maxWidth,
-            aspectRatio: invitationCard.style.aspectRatio,
+    } else {
+        // --- LÓGICA DE ALTA CALIDAD PARA WEB (la que ya teníamos) ---
+        // Redimensiona el DOM para una captura de máxima fidelidad.
+        const img = new Image();
+        const style = window.getComputedStyle(invitationCard);
+        const bgImageSrc = style.backgroundImage.slice(4, -1).replace(/"/g, "");
+        img.src = bgImageSrc;
+
+        img.onload = function() {
+            const originalWidth = this.naturalWidth;
+            const originalHeight = this.naturalHeight;
+            const currentCardWidth = invitationCard.offsetWidth;
+            const currentCardHeight = invitationCard.offsetHeight;
+            const targetWidth = currentCardWidth + (originalWidth - currentCardWidth) * 0.25;
+            const targetHeight = currentCardHeight + (originalHeight - currentCardHeight) * 0.25;
+            const scaleFactor = targetWidth / currentCardWidth;
+            const currentFontSize = parseFloat(window.getComputedStyle(guestNameDisplay).fontSize);
+            const newFontSize = currentFontSize * scaleFactor;
+            const originalCardStyles = {
+                width: invitationCard.style.width,
+                height: invitationCard.style.height,
+                maxWidth: invitationCard.style.maxWidth,
+                aspectRatio: invitationCard.style.aspectRatio,
+            };
+            const originalNameStyle = guestNameDisplay.style.fontSize;
+            invitationCard.style.width = `${targetWidth}px`;
+            invitationCard.style.height = `${targetHeight}px`;
+            invitationCard.style.maxWidth = 'none';
+            invitationCard.style.aspectRatio = 'auto';
+            guestNameDisplay.style.fontSize = `${newFontSize}px`;
+            
+            setTimeout(() => {
+                html2canvas(invitationCard, {
+                    useCORS: true,
+                    allowTaint: true,
+                    width: targetWidth,
+                    height: targetHeight,
+                    onprogress: function(progress) {
+                        const percent = Math.round((progress.loaded / progress.total) * 100);
+                        progressBar.style.width = percent + '%';
+                    }
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    const guestName = guestNameInput.value.trim() || 'invitado';
+                    const fileName = `invitacion_${guestName.replace(/\s+/g, '_')}.png`;
+                    link.download = fileName;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    Object.assign(invitationCard.style, originalCardStyles);
+                    guestNameDisplay.style.fontSize = originalNameStyle;
+                    resetDownloadButton();
+                }).catch(err => {
+                    console.error('Oops, algo salió mal!', err);
+                    progressText.textContent = 'Hubo un error al generar la imagen.';
+                    Object.assign(invitationCard.style, originalCardStyles);
+                    guestNameDisplay.style.fontSize = originalNameStyle;
+                    setTimeout(resetDownloadButton, 2000);
+                });
+            }, 100);
         };
-        const originalNameStyle = guestNameDisplay.style.fontSize;
 
-        // 3. Redimensionamos temporalmente el contenedor y el texto a las dimensiones objetivo
-        invitationCard.style.width = `${targetWidth}px`;
-        invitationCard.style.height = `${targetHeight}px`;
-        invitationCard.style.maxWidth = 'none';
-        invitationCard.style.aspectRatio = 'auto';
-        guestNameDisplay.style.fontSize = `${newFontSize}px`;
-        
-        // Damos un pequeño respiro al navegador para que renderice los cambios de tamaño
-        setTimeout(() => {
-            // 4. Usamos html2canvas para capturar el div redimensionado
-            html2canvas(invitationCard, {
-                useCORS: true,
-                allowTaint: true,
-                // Especificamos las dimensiones para asegurar la calidad
-                width: targetWidth,
-                height: targetHeight,
-                onprogress: function(progress) {
-                    const percent = Math.round((progress.loaded / progress.total) * 100);
-                    progressBar.style.width = percent + '%';
-                }
-            }).then(canvas => {
-                // 5. Creamos el enlace de descarga
-                const link = document.createElement('a');
-                const guestName = guestNameInput.value.trim() || 'invitado';
-                const fileName = `invitacion_${guestName.replace(/\s+/g, '_')}.png`;
-                
-                link.download = fileName;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-
-                // 6. Restauramos los estilos originales del contenedor y del texto
-                Object.assign(invitationCard.style, originalCardStyles);
-                guestNameDisplay.style.fontSize = originalNameStyle;
-                resetDownloadButton();
-
-            }).catch(err => {
-                console.error('Oops, algo salió mal!', err);
-                progressText.textContent = 'Hubo un error al generar la imagen.';
-                // Aseguramos restaurar los estilos también en caso de error
-                Object.assign(invitationCard.style, originalCardStyles);
-                guestNameDisplay.style.fontSize = originalNameStyle;
-                setTimeout(resetDownloadButton, 2000);
-            });
-        }, 100); // Pequeña demora para el re-renderizado
-    };
-
-    img.onerror = function() {
-        console.error("Error al cargar la imagen de fondo para la captura de alta calidad.");
-        progressText.textContent = 'Error al cargar imagen de fondo.';
-        setTimeout(resetDownloadButton, 2000);
-    };
+        img.onerror = function() {
+            console.error("Error al cargar la imagen de fondo.");
+            progressText.textContent = 'Error al cargar imagen de fondo.';
+            setTimeout(resetDownloadButton, 2000);
+        };
+    }
 });
 
 function resetDownloadButton() {
