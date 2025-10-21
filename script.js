@@ -29,25 +29,25 @@ downloadBtn.addEventListener('click', function() {
 
     if (isMobile) {
         // --- LÓGICA OPTIMIZADA PARA MÓVILES ---
-        // Se genera en JPEG para reducir drásticamente el peso del archivo.
+        // Se genera en PNG con una escala mayor para un balance entre calidad y rendimiento.
         progressText.textContent = 'Optimizando para móvil...';
         progressBar.style.width = '20%';
 
         html2canvas(invitationCard, {
             useCORS: true,
             allowTaint: true,
-            backgroundColor: '#ffffff', // El formato JPEG necesita un color de fondo, el blanco es neutro.
-            scale: 2.0 // Escala optimizada para móviles.
+            backgroundColor: null, // Permitimos transparencia para el PNG
+            scale: 3.0 // Aumentamos la escala para mayor calidad
         }).then(canvas => {
             progressBar.style.width = '100%';
             const link = document.createElement('a');
             const guestName = guestNameInput.value.trim() || 'invitado';
-            // Cambiamos el nombre del archivo a .jpeg
-            const fileName = `invitacion_${guestName.replace(/\s+/g, '_')}.jpeg`;
+            // Volvemos a formato PNG
+            const fileName = `invitacion_${guestName.replace(/\s+/g, '_')}.png`;
             
             link.download = fileName;
-            // Convertimos el canvas a formato JPEG con un 92% de calidad para un balance perfecto.
-            link.href = canvas.toDataURL('image/jpeg', 0.92);
+            // Guardamos como PNG
+            link.href = canvas.toDataURL('image/png');
             link.click();
             resetDownloadButton();
 
@@ -135,3 +135,4 @@ function resetDownloadButton() {
     downloadBtn.innerHTML = '<i class="gg-software-download"></i> Descargar Invitación';
     downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
 }
+
